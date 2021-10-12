@@ -1,15 +1,15 @@
 [package]
-name = "TODO_CRATE_NAME"
+name = "tiptoe"
 version = "0.0.1"
 authors = ["Tamme Schichler <tamme@schichler.dev>"]
 edition = "2018"
-description = "TODO_DESCRIPTION"
+description = "Intrusive reference counting. Implement once non-generically for both `Arc` and `Rc`, no overhead."
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/Tamschi/TODO_CRATE_NAME"
-homepage = "https://github.com/Tamschi/TODO_CRATE_NAME/tree/v0.0.1"
-documentation = "https://docs.rs/TODO_CRATE_NAME/0.0.1"
-keywords = [] #TODO
-categories = [] #TODO
+repository = "https://github.com/Tamschi/tiptoe"
+homepage = "https://github.com/Tamschi/tiptoe/tree/v0.0.1"
+documentation = "https://docs.rs/tiptoe/0.0.1"
+keywords = ["arc", "rc", "intrusive", "no_std"]
+categories = ["rust-patterns"]
 readme = "README.md"
 include = [
 	"**/*.rs",
@@ -24,9 +24,12 @@ include = [
 resolver = "2"
 publish = false
 
+[features]
+sync = []
+
 [badges]
-is-it-maintained-issue-resolution = { repository = "Tamschi/TODO_CRATE_NAME" }
-is-it-maintained-open-issues = { repository = "Tamschi/TODO_CRATE_NAME" }
+is-it-maintained-issue-resolution = { repository = "Tamschi/tiptoe" }
+is-it-maintained-open-issues = { repository = "Tamschi/tiptoe" }
 maintenance = { status = "experimental" } # This may differ between branches.
 
 [dev-dependencies]
