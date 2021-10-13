@@ -129,7 +129,7 @@ pub mod tip_toe_api {
 			#[cfg(not(feature = "sync"))]
 			{
 				let old_count = self.refcount().get();
-				if matches!(old_count, 0 | usize::MAX) {
+				if old_count == usize::MAX {
 					// See `alloc::rc::RcInnerPtr::inc_strong`:
 					// <https://github.com/rust-lang/rust/blob/81117ff930fbf3792b4f9504e3c6bccc87b10823/library/alloc/src/rc.rs#L2442-L2453>
 					abort()
