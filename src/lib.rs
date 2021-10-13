@@ -8,11 +8,18 @@ pub mod readme {
 	doc_comment::doctest!("../README.md");
 }
 
+extern crate alloc;
+
 #[cfg(not(feature = "sync"))]
 use core::cell::Cell;
 #[cfg(feature = "sync")]
 use core::sync::atomic::AtomicUsize;
-use core::{cmp, hash::Hash, marker::PhantomPinned};
+use core::{cmp, hash::Hash, marker::PhantomPinned, mem::ManuallyDrop};
+
+#[cfg(feature = "sync")]
+mod sync;
+#[cfg(feature = "sync")]
+pub use sync::Arc;
 
 /// A member that an instance can balance on.
 ///
@@ -74,7 +81,7 @@ pub mod tip_toe_api {
 
 		use crate::TipToe;
 
-		pub trait Sealed {
+		pub trait Sealed: 'static {
 			#[cfg(feature = "sync")]
 			fn refcount(&self) -> &AtomicUsize;
 			#[cfg(not(feature = "sync"))]
@@ -95,11 +102,11 @@ pub mod tip_toe_api {
 			}
 		}
 	}
-	use private::Sealed;
+	pub(super) use private::Sealed;
 
 	use crate::TipToe;
 
-	trait TipToeExt: Sealed {
+	pub trait TipToeExt: Sealed {
 		/// Increments the reference count with [`Ordering::Relaxed`].
 		fn increment(&self) {
 			#[cfg(feature = "sync")]
@@ -110,6 +117,14 @@ pub mod tip_toe_api {
 
 		/// Decrements the reference count with [`Ordering::Release`] and
 		/// returns the **new** value.
+		///
+		/// # Safety
+		///
+		/// In terms of memory-safety only:
+		///
+		/// Calling this method is equivalent to calling either [`Arc::from_raw`](`crate::Arc::from_raw`)
+		/// or [`Rc::from_raw`](`crate::Rc::from_raw`) (whichever is safer)
+		/// and then dropping the resulting instance.
 		#[inline]
 		unsafe fn decrement(&self) -> DecrementFollowup {
 			match {
@@ -127,7 +142,7 @@ pub mod tip_toe_api {
 				1 => {
 					#[cfg(feature = "sync")]
 					self.refcount().load(Ordering::Acquire);
-					DecrementFollowup::DropIt
+					DecrementFollowup::DropOrMoveIt
 				}
 				_ => DecrementFollowup::LeakIt,
 			}
@@ -139,6 +154,13 @@ pub mod tip_toe_api {
 		/// # Safety Notes
 		///
 		/// This is only suitable for synchronous reference-counting.
+		///
+		/// # Safety
+		///
+		/// In terms of memory-safety only:
+		///
+		/// Calling this method is equivalent to calling either [`Rc::from_raw`](`crate::Rc::from_raw`)
+		/// and then dropping the resulting instance.
 		unsafe fn decrement_relaxed(&self) -> DecrementFollowup {
 			match {
 				#[cfg(feature = "sync")]
@@ -152,7 +174,7 @@ pub mod tip_toe_api {
 					old_count
 				}
 			} {
-				1 => DecrementFollowup::DropIt,
+				1 => DecrementFollowup::DropOrMoveIt,
 				_ => DecrementFollowup::LeakIt,
 			}
 		}
@@ -194,8 +216,8 @@ pub mod tip_toe_api {
 	impl TipToeExt for TipToe {}
 
 	pub enum DecrementFollowup {
-		DropIt,
 		LeakIt,
+		DropOrMoveIt,
 	}
 
 	pub enum AcquireOutcome {
@@ -203,6 +225,7 @@ pub mod tip_toe_api {
 		Shared,
 	}
 }
+use tip_toe_api::Sealed;
 
 /// Enables intrusive reference counting for a structure.
 ///
@@ -214,7 +237,29 @@ pub mod tip_toe_api {
 ///
 /// > Hint: [`TipToe`] is `!Unpin`.
 ///
-/// The [`TipToe`] also mustn't be otherwise decremented (which can only be guaranteed if it's not public).
+/// > The [`TipToe`] also mustn't be otherwise decremented (which can only be guaranteed if it's not public) in violation of sound reference-counting,
+/// > but that's `unsafe` anyway.
 pub unsafe trait TipToed {
-	fn tip_toe(&self) -> &TipToe;
+	/// [`TipToe`].
+	type Toe: Sealed;
+
+	/// > I recommend inlining this.
+	#[allow(unused_attributes)]
+	fn tip_toe(&self) -> &TipToe {
+		#![inline(always)]
+		todo!() // Filled in by implementor.
+	}
+}
+
+unsafe impl<T> TipToed for ManuallyDrop<T>
+where
+	T: TipToed,
+{
+	type Toe = T::Toe;
+
+	fn tip_toe(&self) -> &TipToe {
+		#![allow(clippy::inline_always)]
+		#![inline(always)]
+		(**self).tip_toe()
+	}
 }

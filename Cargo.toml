@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/Tamschi/tiptoe"
 homepage = "https://github.com/Tamschi/tiptoe/tree/v0.0.1"
 documentation = "https://docs.rs/tiptoe/0.0.1"
-keywords = ["arc", "rc", "intrusive", "no_std"]
+keywords = ["arc", "rc", "intrusive"]
 categories = ["rust-patterns"]
 readme = "README.md"
 include = [
@@ -38,3 +38,8 @@ doc-comment = "0.3.3"
 git_info = "0.1.2"
 version-sync = "0.9.3"
 wasm-bindgen-test = "0.3.28"
+
+[dependencies]
+tap = "1.0.1"
+
+# TODO: Docs.rs all features.
