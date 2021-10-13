@@ -102,17 +102,40 @@ pub mod tip_toe_api {
 			}
 		}
 	}
+	use abort::abort;
 	pub(super) use private::Sealed;
 
 	use crate::TipToe;
 
 	pub trait TipToeExt: Sealed {
 		/// Increments the reference count with [`Ordering::Relaxed`].
+		///
+		/// # Safety Notes
+		///
+		/// This is a safe operation, but incrementing the reference count too far will abort the current process rather than risk an overflow.
+		///
+		/// The (soft!) limit mirrors that of the standard library as of 2021-10-13.
 		fn increment(&self) {
 			#[cfg(feature = "sync")]
-			self.refcount().fetch_add(1, Ordering::Relaxed);
+			if self.refcount().fetch_add(1, Ordering::Relaxed) > (isize::MAX as usize) {
+				// See `alloc::Sync::Arc`'s clone implementation for why it's necessary to guard against immense reference counts:
+				// <https://github.com/rust-lang/rust/blob/81117ff930fbf3792b4f9504e3c6bccc87b10823/library/alloc/src/sync.rs#L1327-L1338>
+				//
+				// In short:
+				//
+				// An overflow could cause a use-after free. There likely aren't about `isize::MAX` threads that can race here, though, and `isize::MAX` is a decently high limit.
+				abort()
+			}
 			#[cfg(not(feature = "sync"))]
-			self.refcount().set(self.refcount().get() + 1)
+			{
+				let old_count = self.refcount().get();
+				if matches!(old_count, 0 | usize::MAX) {
+					// See `alloc::rc::RcInnerPtr::inc_strong`:
+					// <https://github.com/rust-lang/rust/blob/81117ff930fbf3792b4f9504e3c6bccc87b10823/library/alloc/src/rc.rs#L2442-L2453>
+					abort()
+				}
+				self.refcount().set(old_count + 1)
+			};
 		}
 
 		/// Decrements the reference count with [`Ordering::Release`] and
