@@ -1,15 +1,22 @@
-use crate::tip_toe_api::{AcquireOutcome, DecrementFollowup, TipToeExt};
-use crate::TipToed;
-use alloc::borrow::{Cow, ToOwned};
-use alloc::boxed::Box;
-use core::any::{Any, TypeId};
-use core::borrow::Borrow;
-use core::fmt::{self, Debug, Display, Formatter, Pointer};
-use core::hash::{Hash, Hasher};
-use core::mem::{self, ManuallyDrop};
-use core::ops::Deref;
-use core::pin::Pin;
-use core::{marker::PhantomData, ptr::NonNull};
+use crate::{
+	tip_toe_api::{AcquireOutcome, DecrementFollowup, TipToeExt},
+	TipToed,
+};
+use alloc::{
+	borrow::{Cow, ToOwned},
+	boxed::Box,
+};
+use core::{
+	any::{Any, TypeId},
+	borrow::Borrow,
+	fmt::{self, Debug, Display, Formatter, Pointer},
+	hash::{Hash, Hasher},
+	marker::PhantomData,
+	mem::{self, ManuallyDrop},
+	ops::Deref,
+	pin::Pin,
+	ptr::NonNull,
+};
 use tap::Pipe;
 
 pub struct Arc<T: ?Sized + TipToed> {
