@@ -17,7 +17,7 @@ use core::{
 	pin::Pin,
 	ptr::NonNull,
 };
-use tap::Pipe;
+use tap::{Pipe, Tap};
 
 pub struct Arc<T: ?Sized + TipToed> {
 	pointer: NonNull<T>,
@@ -244,7 +244,8 @@ impl<T: ?Sized + TipToed> Arc<T> {
 					&mut mem::transmute::<Self, Arc<ManuallyDrop<T>>>(this)
 						.pointer
 						.as_mut(),
-				))
+				)
+				.tap_mut(|unwrapped| unwrapped.tip_toe().decrement_relaxed().pipe(drop)))
 			},
 		}
 	}
