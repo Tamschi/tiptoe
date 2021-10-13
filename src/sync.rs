@@ -344,7 +344,7 @@ impl<T: ?Sized + TipToed> Arc<T> {
 		}
 		unsafe {
 			Pin::new_unchecked(
-				mem::transmute_copy::<Pin<Self>, Self>(this)
+				(*(this as *mut Pin<Self>).cast::<Arc<T>>())
 					.pointer
 					.as_mut(),
 			)
@@ -357,7 +357,7 @@ impl<T: ?Sized + TipToed> Arc<T> {
 			AcquireOutcome::Shared => None,
 			AcquireOutcome::Exclusive => Some(unsafe {
 				Pin::new_unchecked(
-					mem::transmute_copy::<Pin<Self>, Self>(this)
+					(*(this as *mut Pin<Self>).cast::<Arc<T>>())
 						.pointer
 						.as_mut(),
 				)
