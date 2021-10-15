@@ -19,6 +19,7 @@ use core::{
 };
 use tap::{Pipe, Tap};
 
+#[repr(transparent)]
 pub struct Arc<T: ?Sized + TipToed> {
 	pointer: NonNull<T>,
 	_phantom: PhantomData<T>,
@@ -254,7 +255,7 @@ impl<T: ?Sized + TipToed> Arc<T> {
 	///
 	/// # Safety
 	///
-	/// The pointer `raw_value` must have been created by leaking from a compatible *unpinned* container.
+	/// The pointer `raw_value` must have been created by leaking the heap-allocated value in a compatible *unpinned* container.
 	///
 	/// Containers are incompatible if their type parameter differs in a way that
 	/// makes the equivalent pointer reinterpretation cast invalid.
@@ -284,7 +285,7 @@ impl<T: ?Sized + TipToed> Arc<T> {
 	///
 	/// # Safety
 	///
-	/// The pointer `raw_value` must have been created by leaking from a compatible container.
+	/// The pointer `raw_value` must have been created by leaking the heap-allocated value in a compatible container.
 	///
 	/// Containers are incompatible if their type parameter differs in a way that
 	/// makes the equivalent pointer reinterpretation cast invalid.
@@ -309,6 +310,17 @@ impl<T: ?Sized + TipToed> Arc<T> {
 			_phantom: PhantomData,
 		}
 		.into()
+	}
+
+	/// Unsafely borrows a shared reference to an [`Arc`]-managed instance as [`Arc`].
+	///
+	/// This is purely a reinterpretation cast.
+	///
+	/// # Safety
+	///
+	/// `inner` must be a reference to a reference to an instance managed by [`Arc`].
+	pub unsafe fn borrow_from_inner_ref<'a>(inner: &'a &'a T) -> &'a Self {
+		&*(inner as *const &T).cast::<Self>()
 	}
 
 	#[must_use]
