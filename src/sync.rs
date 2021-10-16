@@ -325,7 +325,20 @@ impl<T: ?Sized + TipToed> Arc<T> {
 	/// # Safety
 	///
 	/// `inner` must be a reference to a reference to an instance managed by [`Arc`].
+	#[must_use]
 	pub unsafe fn borrow_from_inner_ref<'a>(inner: &'a &'a T) -> &'a Self {
+		&*(inner as *const &T).cast::<Self>()
+	}
+
+	/// Unsafely borrows a shared reference to a [`Pin<Arc>`]-managed instance as [`Pin<Arc>`].
+	///
+	/// This is purely a reinterpretation cast.
+	///
+	/// # Safety
+	///
+	/// `inner` must be a reference to a reference to an instance managed by [`Pin<Arc>`].
+	#[must_use]
+	pub unsafe fn borrow_pin_from_inner_ref<'a>(inner: &'a &'a T) -> &'a Self {
 		&*(inner as *const &T).cast::<Self>()
 	}
 
