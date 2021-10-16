@@ -263,7 +263,7 @@ use tip_toe_api::Sealed;
 /// > The [`TipToe`] also mustn't be otherwise decremented (which can only be guaranteed if it's not public) in violation of sound reference-counting,
 /// > but that's `unsafe` anyway.
 ///
-/// [`TipToe::tip_toe`] must not have side-effects.
+/// [`TipToe::tip_toe`] must not have effects.
 ///
 /// > Mainly so the callee doesn't observe its address,
 /// > which gives this crate a bit more flexibility regarding implementation details.

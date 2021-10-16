@@ -355,7 +355,9 @@ impl<T: ?Sized + TipToed> Arc<T> {
 			AcquireOutcome::Exclusive => (),
 			AcquireOutcome::Shared => {
 				*this = unsafe {
-					// Safety: No effective encapsulation change.
+					// Safety:
+					// No effective encapsulation change happens.
+					// `Self::pin` does call `TipToed::tip_toe`, but this is legal as that method is not allowed to have effects.
 					(&**this).managed_clone().pipe(Self::pin)
 				}
 			}
