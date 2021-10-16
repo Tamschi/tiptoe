@@ -1,6 +1,6 @@
 use crate::{
 	tip_toe_api::{AcquireOutcome, DecrementFollowup, TipToeExt},
-	TipToed,
+	ManagedClone, TipToed,
 };
 use alloc::{
 	borrow::{Cow, ToOwned},
@@ -349,11 +349,16 @@ impl<T: ?Sized + TipToed> Arc<T> {
 	#[must_use]
 	pub fn make_mut(this: &mut Pin<Self>) -> Pin<&mut T>
 	where
-		T: Sized + Clone,
+		T: Sized + ManagedClone,
 	{
 		match this.tip_toe().acquire() {
 			AcquireOutcome::Exclusive => (),
-			AcquireOutcome::Shared => *this = (&**this).clone().pipe(Self::pin),
+			AcquireOutcome::Shared => {
+				*this = unsafe {
+					// Safety: No effective encapsulation change.
+					(&**this).managed_clone().pipe(Self::pin)
+				}
+			}
 		}
 		unsafe {
 			Pin::new_unchecked(

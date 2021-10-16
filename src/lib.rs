@@ -262,6 +262,11 @@ use tip_toe_api::Sealed;
 ///
 /// > The [`TipToe`] also mustn't be otherwise decremented (which can only be guaranteed if it's not public) in violation of sound reference-counting,
 /// > but that's `unsafe` anyway.
+///
+/// [`TipToe::tip_toe`] must not have side-effects.
+///
+/// > Mainly so the callee doesn't observe its address,
+/// > which gives this crate a bit more flexibility regarding implementation details.
 pub unsafe trait TipToed {
 	/// [`TipToe`].
 	type Toe: Sealed;
@@ -284,5 +289,53 @@ where
 		#![allow(clippy::inline_always)]
 		#![inline(always)]
 		(**self).tip_toe()
+	}
+}
+
+/// Exactly like [`Clone`] but with safety restrictions regarding usage.
+///
+/// See the methods for more information.
+pub trait ManagedClone: Sized {
+	/// # Safety
+	///
+	/// This method may only be used to create equally encapsulated instances.
+	///
+	/// For example, if you can see the instance is inside a [`Box`](`alloc::boxed::Box`),
+	/// then you may clone it into another [`Box`](`alloc::boxed::Box`) this way.
+	///
+	/// If you have only a reference or pointer to the implementing type's instance,
+	/// but don't know or can't replicate its precise encapsulation, then you must not call this method.
+	///
+	/// You may not use it in any way that could have side-effects before encapsulating the clone.
+	/// This also means you may not drop the clone. Forgetting it is fine.
+	unsafe fn managed_clone(&self) -> Self;
+
+	/// # Safety
+	///
+	/// This method may only be used to create equally encapsulated instances.
+	///
+	/// For example, if you can see the instance is inside a [`Box`](`alloc::boxed::Box`),
+	/// then you may clone it into another [`Box`](`alloc::boxed::Box`) this way.
+	///
+	/// If you have only a reference or pointer to the implementing type's instance,
+	/// but don't know or can't replicate its precise encapsulation, then you must not call this method.
+	///
+	/// You may not use it in any way that could have side-effects before encapsulating the clone.
+	/// This also means you may not drop the clone. Forgetting it is fine.
+	unsafe fn managed_clone_from(&mut self, source: &Self) {
+		*self = source.managed_clone()
+	}
+}
+
+impl<T> ManagedClone for T
+where
+	T: Clone,
+{
+	unsafe fn managed_clone(&self) -> Self {
+		self.clone()
+	}
+
+	unsafe fn managed_clone_from(&mut self, source: &Self) {
+		self.clone_from(source)
 	}
 }
