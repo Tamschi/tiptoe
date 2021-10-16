@@ -133,7 +133,10 @@ impl<T: Sized + TipToed> From<T> for Arc<T> {
 	}
 }
 
-impl<T: Sized + TipToed> From<T> for Pin<Arc<T>> {
+impl<T: Sized + TipToed> From<T> for Pin<Arc<T>>
+where
+	T: Unpin,
+{
 	fn from(value: T) -> Self {
 		Arc::pin(value)
 	}
@@ -144,7 +147,7 @@ where
 	T: Unpin,
 {
 	fn from(pinned: Pin<Arc<T>>) -> Self {
-		Self::unpin(pinned)
+		unsafe { Pin::into_inner_unchecked(pinned) }
 	}
 }
 
@@ -222,13 +225,16 @@ impl<T: ?Sized + TipToed> Arc<T> {
 		unsafe { Pin::new_unchecked(Self::from_raw(NonNull::new_unchecked(instance))) }
 	}
 
-	/// See also `impl From<Pin<Arc<_>>> for Arc<_>`.
-	#[must_use]
-	pub fn unpin(this: Pin<Self>) -> Self
+	/// # Errors
+	///
+	/// Iff this [`Arc`] is not an exclusive handle.
+	pub fn try_unpin(this: Pin<Self>) -> Result<T, Pin<Self>>
 	where
-		T: Unpin,
+		T: Sized + Unpin,
 	{
-		unsafe { Pin::into_inner_unchecked(this) }
+		Pin::into_inner(this)
+			.pipe(Self::try_unwrap)
+			.map_err(Pin::new)
 	}
 
 	/// # Errors
