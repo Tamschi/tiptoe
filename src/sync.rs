@@ -314,7 +314,7 @@ impl<T: ?Sized + TipToed> Arc<T> {
 			pointer: raw_value,
 			_phantom: PhantomData,
 		}
-		.into()
+		.pipe(|this| Pin::new_unchecked(this))
 	}
 
 	/// Unsafely borrows a shared reference to an [`Arc`]-managed instance as [`Arc`].
