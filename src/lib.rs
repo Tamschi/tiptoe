@@ -14,12 +14,24 @@ extern crate alloc;
 use core::cell::Cell;
 #[cfg(feature = "sync")]
 use core::sync::atomic::AtomicUsize;
-use core::{cmp, hash::Hash, marker::PhantomPinned, mem::ManuallyDrop};
+use core::{
+	cmp,
+	hash::Hash,
+	marker::PhantomPinned,
+	mem::ManuallyDrop,
+	ops::{Deref, DerefMut},
+	pin::Pin,
+};
 
 #[cfg(feature = "sync")]
 mod sync;
 #[cfg(feature = "sync")]
 pub use sync::Arc;
+
+/// Note: The `refcount` values [`EXCLUSIVITY_MARKER`] and up are special.
+///
+/// They denote an active exclusive borrow of the value, with some room to spare for data races.
+const EXCLUSIVITY_MARKER: usize = usize::MAX - (usize::MAX - isize::MAX as usize) / 2;
 
 /// A member that an instance can balance on.
 ///
@@ -86,6 +98,13 @@ pub mod tip_toe_api {
 			fn refcount(&self) -> &AtomicUsize;
 			#[cfg(not(feature = "sync"))]
 			fn refcount(&self) -> &Cell<usize>;
+
+			fn refcount_ptr(&self) -> *mut usize {
+				#[cfg(feature = "sync")]
+				return self.refcount() as *const AtomicUsize as *mut usize;
+				#[cfg(not(feature = "sync"))]
+				return self.refcount().as_ptr();
+			}
 		}
 		impl Sealed for TipToe {
 			#[allow(clippy::inline_always)]
@@ -105,7 +124,7 @@ pub mod tip_toe_api {
 	use abort::abort;
 	pub(super) use private::Sealed;
 
-	use crate::TipToe;
+	use crate::{TipToe, EXCLUSIVITY_MARKER};
 
 	pub trait TipToeExt: Sealed {
 		/// Increments the reference count with [`Ordering::Relaxed`].
@@ -114,25 +133,58 @@ pub mod tip_toe_api {
 		///
 		/// This is a safe operation, but incrementing the reference count too far will abort the current process rather than risk an overflow.
 		///
-		/// The (soft!) limit mirrors that of the standard library as of 2021-10-13.
+		/// The (soft!) limit with the `"sync"` feature mirrors that of the standard library as of 2021-10-13.  
+		/// The (soft!) limit without that feature will be somewhat higher.
+		///
+		/// # Panics
+		///
+		/// Iff called during exclusivity.
+		///
+		/// # Aborts
+		///
+		/// This function may abort in cases where the reference count becomes VERY high (for the given target platform),
+		/// or during a race condition when dropping an [`Exclusivity`] erroneously while this function executes.
 		fn increment(&self) {
 			#[cfg(feature = "sync")]
-			if self.refcount().fetch_add(1, Ordering::Relaxed) > (isize::MAX as usize) {
-				// See `alloc::Sync::Arc`'s clone implementation for why it's necessary to guard against immense reference counts:
-				// <https://github.com/rust-lang/rust/blob/81117ff930fbf3792b4f9504e3c6bccc87b10823/library/alloc/src/sync.rs#L1327-L1338>
-				//
-				// In short:
-				//
-				// An overflow could cause a use-after free. There likely aren't about `isize::MAX` threads that can race here, though, and `isize::MAX` is a decently high limit.
-				abort()
+			{
+				let old_count = self.refcount().fetch_add(1, Ordering::Relaxed);
+				if old_count >= (isize::MAX as usize) {
+					if old_count >= EXCLUSIVITY_MARKER {
+						// This is actually a handle clone during an exclusive borrow.
+						// We'll revert the refcount and panic instead of aborting.
+						// (TODO: Examine performance implications of having this branch here.)
+						if self.refcount().fetch_sub(1, Ordering::Relaxed) > EXCLUSIVITY_MARKER {
+							panic!("Tried to clone smart pointer during exclusive value borrow.")
+						} else {
+							// We likely got outraced by an `Exclusivity` drop.
+							// That's quite badly erroneous and could cause data corruption elsewhere
+							// due to the now most likely invalid reference count.
+							abort()
+						}
+					} else {
+						// See `alloc::Sync::Arc`'s clone implementation for why it's necessary to guard against immense reference counts:
+						// <https://github.com/rust-lang/rust/blob/81117ff930fbf3792b4f9504e3c6bccc87b10823/library/alloc/src/sync.rs#L1327-L1338>
+						//
+						// In short:
+						//
+						// An overflow could cause a use-after free. There likely aren't about `isize::MAX` threads that can race here, though, and `isize::MAX` is a decently high limit.
+						abort()
+					}
+				}
 			}
 			#[cfg(not(feature = "sync"))]
 			{
 				let old_count = self.refcount().get();
-				if old_count == usize::MAX {
-					// See `alloc::rc::RcInnerPtr::inc_strong`:
-					// <https://github.com/rust-lang/rust/blob/81117ff930fbf3792b4f9504e3c6bccc87b10823/library/alloc/src/rc.rs#L2442-L2453>
-					abort()
+				if old_count >= EXCLUSIVITY_MARKER - 1 {
+					if old_count < EXCLUSIVITY_MARKER {
+						// See `alloc::rc::RcInnerPtr::inc_strong`:
+						// <https://github.com/rust-lang/rust/blob/81117ff930fbf3792b4f9504e3c6bccc87b10823/library/alloc/src/rc.rs#L2442-L2453>
+						abort()
+					} else {
+						// This is actually a handle clone during an exclusive borrow.
+						// We'll panic instead of aborting. (TODO: Examine performance implications of having this branch here.)
+						panic!("Tried to clone smart pointer during exclusive value borrow.")
+					}
 				}
 				self.refcount().set(old_count + 1)
 			};
@@ -142,6 +194,8 @@ pub mod tip_toe_api {
 		/// returns the **new** value.
 		///
 		/// # Safety
+		///
+		/// Must not be called during exclusivity.
 		///
 		/// In terms of memory-safety only:
 		///
@@ -180,9 +234,11 @@ pub mod tip_toe_api {
 		///
 		/// # Safety
 		///
+		/// Must not be called during exclusivity.
+		///
 		/// In terms of memory-safety only:
 		///
-		/// Calling this method is equivalent to calling either [`Rc::from_raw`](`crate::Rc::from_raw`)
+		/// Calling this method is equivalent to calling [`Rc::from_raw`](`crate::Rc::from_raw`)
 		/// and then dropping the resulting instance.
 		unsafe fn decrement_relaxed(&self) -> DecrementFollowup {
 			match {
@@ -197,13 +253,20 @@ pub mod tip_toe_api {
 					old_count
 				}
 			} {
+				EXCLUSIVITY_MARKER.. => abort(),
 				1 => DecrementFollowup::DropOrMoveIt,
 				_ => DecrementFollowup::LeakIt,
 			}
 		}
 
-		/// Loads the reference count with [`Ordering::Acquire`].
-		fn acquire(&self) -> AcquireOutcome {
+		/// Ascertains exclusivity with [`Ordering::Acquire`], and, if successful, prevents reference count increments until any resulting `Exclusivity` is dropped.
+		///
+		/// Returns [`None`] iff the reference-counted instance is shared.
+		///
+		/// # Safety
+		///
+		/// Dropping the [`Exclusivity`] performs a write to a remembered address, so **the borrowed instance must not be moved** until then.
+		unsafe fn acquire(&self) -> Option<Exclusivity> {
 			match {
 				#[cfg(feature = "sync")]
 				{
@@ -212,17 +275,27 @@ pub mod tip_toe_api {
 				#[cfg(not(feature = "sync"))]
 				self.refcount().get()
 			} {
-				1 => AcquireOutcome::Exclusive,
-				_ => AcquireOutcome::Shared,
+				1 => Some(Exclusivity::new(self)),
+				_ => None,
 			}
 		}
 
-		/// Loads the reference count with [`Ordering::Relaxed`]
+		/// Ascertains exclusivity with [`Ordering::Relaxed`].
+		///
+		/// Returns [`None`] iff the reference-counted instance is shared.
+		///
+		/// # Safety
+		///
+		/// Exclusive references to the memory reference-counted by this instance may only exist while an [`Exclusivity`] does.
+		/// (Forgetting it is fine but won't allow any further borrows of that memory at all.)
+		///
+		/// In particular, dropping the [`Exclusivity`] performs a write to a remembered address, so **the borrowed instance must not be moved**.
 		///
 		/// # Safety Notes
 		///
 		/// This is only suitable for synchronous reference-counting.
-		fn acquire_relaxed(&self) -> AcquireOutcome {
+		#[must_use]
+		fn acquire_relaxed(&self) -> Option<Exclusivity> {
 			match {
 				#[cfg(feature = "sync")]
 				{
@@ -231,8 +304,8 @@ pub mod tip_toe_api {
 				#[cfg(not(feature = "sync"))]
 				self.refcount().get()
 			} {
-				1 => AcquireOutcome::Exclusive,
-				_ => AcquireOutcome::Shared,
+				1 => Some(Exclusivity::new(self)),
+				_ => None,
 			}
 		}
 	}
@@ -243,12 +316,34 @@ pub mod tip_toe_api {
 		DropOrMoveIt,
 	}
 
-	pub enum AcquireOutcome {
-		Exclusive,
-		Shared,
+	/// A handle for exclusively borrowing a reference-counted instance.
+	///
+	/// Any attempt to clone a handle will panic until this is dropped.
+	pub struct Exclusivity {
+		refcount: *mut usize,
+		displaced_refcount: usize,
+	}
+
+	impl Exclusivity {
+		fn new<T: ?Sized + Sealed>(counter: &T) -> Self {
+			let ptr = counter.refcount_ptr();
+			Self {
+				displaced_refcount: unsafe { ptr.read() },
+				refcount: {
+					unsafe { ptr.write(EXCLUSIVITY_MARKER) };
+					ptr
+				},
+			}
+		}
+	}
+
+	impl Drop for Exclusivity {
+		fn drop(&mut self) {
+			unsafe { self.refcount.write(self.displaced_refcount) }
+		}
 	}
 }
-use tip_toe_api::Sealed;
+use tip_toe_api::{Exclusivity, Sealed};
 
 /// Enables intrusive reference counting for a structure.
 ///
@@ -337,5 +432,34 @@ where
 
 	unsafe fn managed_clone_from(&mut self, source: &Self) {
 		self.clone_from(source)
+	}
+}
+
+/// A [`Pin<&'a mut T>`](`Pin`).
+#[must_use]
+pub struct ExclusivePin<'a, T: ?Sized> {
+	reference: Pin<&'a mut T>,
+	_exclusivity: Exclusivity,
+}
+impl<'a, T: ?Sized> ExclusivePin<'a, T> {
+	pub fn new(exclusivity: Exclusivity, reference: Pin<&'a mut T>) -> Self {
+		Self {
+			reference,
+			_exclusivity: exclusivity,
+		}
+	}
+}
+
+impl<'a, T: ?Sized> Deref for ExclusivePin<'a, T> {
+	type Target = Pin<&'a mut T>;
+
+	fn deref(&self) -> &Self::Target {
+		&self.reference
+	}
+}
+
+impl<'a, T: ?Sized> DerefMut for ExclusivePin<'a, T> {
+	fn deref_mut(&mut self) -> &mut Self::Target {
+		&mut self.reference
 	}
 }

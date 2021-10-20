@@ -1,6 +1,6 @@
 use crate::{
-	tip_toe_api::{AcquireOutcome, DecrementFollowup, TipToeExt},
-	ManagedClone, TipToed,
+	tip_toe_api::{DecrementFollowup, TipToeExt},
+	ExclusivePin, ManagedClone, TipToed,
 };
 use alloc::{
 	borrow::{Cow, ToOwned},
@@ -243,9 +243,10 @@ impl<T: ?Sized + TipToed> Arc<T> {
 	where
 		T: Sized,
 	{
-		match this.tip_toe().acquire() {
-			AcquireOutcome::Shared => Err(this),
-			AcquireOutcome::Exclusive => unsafe {
+		match unsafe { this.tip_toe().acquire() } {
+			None => Err(this),
+			Some(exclusivity) => unsafe {
+				drop(exclusivity); // We still have exclusivity until we relinquish control. However, we do want to manipulate the reference count.
 				Ok(ManuallyDrop::take(
 					&mut mem::transmute::<Self, Arc<ManuallyDrop<T>>>(this)
 						.pointer
@@ -364,43 +365,42 @@ impl<T: ?Sized + TipToed> Arc<T> {
 		this.pointer == other.pointer
 	}
 
-	#[must_use]
-	pub fn make_mut(this: &mut Pin<Self>) -> Pin<&mut T>
+	pub fn make_mut(this: &mut Pin<Self>) -> ExclusivePin<T>
 	where
 		T: Sized + ManagedClone,
 	{
-		match this.tip_toe().acquire() {
-			AcquireOutcome::Exclusive => (),
-			AcquireOutcome::Shared => {
-				*this = unsafe {
-					// Safety:
-					// No effective encapsulation change happens.
-					// `Self::pin` does call `TipToed::tip_toe`, but this is legal as that method is not allowed to have effects.
-					(&**this).managed_clone().pipe(Self::pin)
-				}
-			}
-		}
-		unsafe {
+		let exclusivity = unsafe { this.tip_toe().acquire() }.unwrap_or_else(|| {
+			*this = unsafe {
+				// Safety:
+				// No effective encapsulation change happens.
+				// `Self::pin` does call `TipToed::tip_toe`, but this is legal as that method is not allowed to have effects.
+				(&**this).managed_clone().pipe(Self::pin)
+			};
+
+			// This could be done faster, but whether that's significant is up to benchmarking it.
+			unsafe { this.tip_toe().acquire() }.expect("unreachable")
+		});
+
+		ExclusivePin::new(exclusivity, unsafe {
 			Pin::new_unchecked(
 				(*(this as *mut Pin<Self>).cast::<Arc<T>>())
 					.pointer
 					.as_mut(),
 			)
-		}
+		})
 	}
 
 	#[must_use]
-	pub fn get_mut(this: &mut Pin<Self>) -> Option<Pin<&mut T>> {
-		match this.tip_toe().acquire() {
-			AcquireOutcome::Shared => None,
-			AcquireOutcome::Exclusive => Some(unsafe {
+	pub fn get_mut(this: &mut Pin<Self>) -> Option<ExclusivePin<T>> {
+		unsafe { this.tip_toe().acquire() }.map(|exclusivity| {
+			ExclusivePin::new(exclusivity, unsafe {
 				Pin::new_unchecked(
 					(*(this as *mut Pin<Self>).cast::<Arc<T>>())
 						.pointer
 						.as_mut(),
 				)
-			}),
-		}
+			})
+		})
 	}
 
 	/// Attempts to cast this [`Arc`] into once of concrete type `U`.
