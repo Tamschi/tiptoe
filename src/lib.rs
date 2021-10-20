@@ -49,6 +49,18 @@ pub struct TipToe {
 	_pinned: PhantomPinned,
 }
 
+impl TipToe {
+	/// Creates as new [`TipToe`] instance.
+	///
+	/// > The name is a pun on this being a refcount digit (implementation detail: It's base [`usize::MAX`].) and
+	/// > a member that the instance can be balanced on. If it "tips over" (becomes `0`) then the instance loses its
+	/// > footing and is dropped - or caught and moved elsewhere instead.
+	#[must_use]
+	pub fn new() -> Self {
+		Self::default()
+	}
+}
+
 impl Clone for TipToe {
 	fn clone(&self) -> Self {
 		Self::default()
