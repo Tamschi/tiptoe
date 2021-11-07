@@ -39,10 +39,10 @@
 //!
 //! `A` is now ready for use with the intrusive pointers defined in this crate.
 //!
-//! The trait derives are optional, but included to show that [`TipToe`] doesn't interfere here (except for [`Copy`]).
+//! The derived traits are optional, but included to show that [`TipToe`] doesn't interfere here (except for [`Copy`]).
 //!
 //! Using [pin-project](https://crates.io/crates/pin-project) is optional,
-//! but very helpful if a struct should still be otherwise(!) mutable behind one of them.
+//! but very helpful if a struct should still be otherwise(!) mutable behind an intrusive pointer.
 //!
 //! Note that `A` must not be [`Unpin`] (in a way that would interfere with reference-counting).
 
