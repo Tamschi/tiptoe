@@ -31,7 +31,7 @@
 //! }
 //!
 //! unsafe impl TipToed for A {
-//!     type Toe = TipToe;
+//!     type RefCounter = TipToe;
 //!
 //!     fn tip_toe(&self) -> &TipToe {
 //!         &self.tip_toe
@@ -83,7 +83,7 @@ pub use sync::Arc;
 /// They denote an active exclusive borrow of the value, with some room to spare for data races.
 const EXCLUSIVITY_MARKER: usize = usize::MAX - (usize::MAX - isize::MAX as usize) / 2;
 
-/// A member that an instance can balance on.
+/// An embeddable strong-only reference counter.
 ///
 /// Transparent to [`PartialEq`], [`Eq`], [`PartialOrd`], [`Ord`] and [`Hash`], [clone](`Clone::clone`)d to its default.
 ///
@@ -141,8 +141,11 @@ impl Hash for TipToe {
 	fn hash<H: core::hash::Hasher>(&self, _: &mut H) {}
 }
 
-pub mod tip_toe_api {
-	//! Low-level [`TipToe`] API for custom intrusive reference-counting containers.
+pub mod ref_counter_api {
+	//! Low-level [`RefCounter`] API for custom intrusive reference-counting containers.
+
+	use crate::{RefCounter, EXCLUSIVITY_MARKER};
+	use abort::abort;
 
 	#[cfg(any(feature = "sync", doc))]
 	use core::sync::atomic::Ordering;
@@ -183,13 +186,10 @@ pub mod tip_toe_api {
 			}
 		}
 	}
-	use abort::abort;
 	pub(super) use private::Sealed;
 
-	use crate::{TipToe, EXCLUSIVITY_MARKER};
-
 	/// Common reference-count manipulation methods.
-	pub trait TipToeExt: Sealed {
+	pub trait RefCounterExt: RefCounter {
 		/// Increments the reference count with [`Ordering::Relaxed`].
 		///
 		/// # Safety Notes
@@ -372,7 +372,7 @@ pub mod tip_toe_api {
 			}
 		}
 	}
-	impl TipToeExt for TipToe {}
+	impl<T> RefCounterExt for T where T: RefCounter {}
 
 	/// An action to take after decrementing the reference-count.
 	///
@@ -414,7 +414,11 @@ pub mod tip_toe_api {
 		}
 	}
 }
-use tip_toe_api::{Exclusivity, Sealed};
+use ref_counter_api::{Exclusivity, Sealed};
+
+/// `(Sealed)` Common trait of [`tiptoe`](`crate`)'s embeddable reference counter types.
+pub trait RefCounter: Sealed {}
+impl<T> RefCounter for T where T: Sealed {}
 
 /// Enables intrusive reference counting for a structure.
 ///
@@ -435,7 +439,7 @@ use tip_toe_api::{Exclusivity, Sealed};
 /// > which gives this crate a bit more flexibility regarding implementation details.
 pub unsafe trait TipToed {
 	/// [`TipToe`].
-	type Toe: Sealed;
+	type RefCounter: RefCounter;
 
 	/// Gets a reference to the instance's reference counter.
 	///
@@ -447,7 +451,7 @@ unsafe impl<T> TipToed for ManuallyDrop<T>
 where
 	T: TipToed,
 {
-	type Toe = T::Toe;
+	type RefCounter = T::RefCounter;
 
 	fn tip_toe(&self) -> &TipToe {
 		#![allow(clippy::inline_always)]

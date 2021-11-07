@@ -43,7 +43,8 @@ pub struct A {
 }
 
 unsafe impl TipToed for A {
-    type Toe = TipToe;
+    type RefCounter = TipToe;
+
     fn tip_toe(&self) -> &TipToe {
         &self.tip_toe
     }

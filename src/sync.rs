@@ -1,5 +1,5 @@
 use crate::{
-	tip_toe_api::{DecrementFollowup, TipToeExt},
+	ref_counter_api::{DecrementFollowup, RefCounterExt},
 	ExclusivePin, ManagedClone, TipToed,
 };
 use alloc::{
