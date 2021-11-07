@@ -320,7 +320,7 @@ pub mod tip_toe_api {
 			}
 		}
 
-		/// Ascertains exclusivity with [`Ordering::Acquire`], and, if successful, prevents reference count increments until any resulting `Exclusivity` is dropped.
+		/// Checks for exclusivity with [`Ordering::Acquire`], and, if successful, prevents reference count increments until any resulting `Exclusivity` is dropped.
 		///
 		/// Returns [`None`] iff the reference-counted instance is shared.
 		///
@@ -341,7 +341,7 @@ pub mod tip_toe_api {
 			}
 		}
 
-		/// Ascertains exclusivity with [`Ordering::Relaxed`].
+		/// Checks for exclusivity with [`Ordering::Relaxed`], and, if successful, prevents reference count increments until any resulting `Exclusivity` is dropped.
 		///
 		/// Returns [`None`] iff the reference-counted instance is shared.
 		///
