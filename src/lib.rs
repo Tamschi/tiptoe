@@ -1,5 +1,7 @@
 //! Generic intrusive smart pointers for Rust.
 //!
+//! [![Zulip Chat](https://img.shields.io/endpoint?label=chat&url=https%3A%2F%2Fiteration-square-automation.schichler.dev%2F.netlify%2Ffunctions%2Fstream_subscribers_shield%3Fstream%3Dproject%252Ftiptoe)](https://iteration-square.schichler.dev/#narrow/stream/project.2Ftiptoe)
+//!
 //! > The library name is a pun:
 //! >
 //! > [`TipToe`] is a digit (counter) to be used as member that instances can "balance" on.
