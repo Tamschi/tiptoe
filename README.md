@@ -61,6 +61,14 @@ fn main() {
 }
 ```
 
+## Implementation Progress
+
+This library is currently only implemented about as far as I need it for rhizome.
+
+Please have a look at the [issues](https://github.com/Tamschi/tiptoe/issues) if you'd like to help out.
+
+Notable current omissions: `Rc`, `Weak`, and most optimisation that doesn't affect the API.
+
 ## License
 
 Licensed under either of
