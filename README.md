@@ -16,7 +16,9 @@
 [![crev reviews](https://web.crev.dev/rust-reviews/badge/crev_count/tiptoe.svg)](https://web.crev.dev/rust-reviews/crate/tiptoe/)
 [![Zulip Chat](https://img.shields.io/endpoint?label=chat&url=https%3A%2F%2Fiteration-square-automation.schichler.dev%2F.netlify%2Ffunctions%2Fstream_subscribers_shield%3Fstream%3Dproject%252Ftiptoe)](https://iteration-square.schichler.dev/#narrow/stream/project.2Ftiptoe)
 
-TODO_README_DESCRIPTION
+An easy-to-support intrusively reference-counting smart pointer.
+
+<!-- TODO: \rs. Implement once non-generically for both `Arc` and `Rc`, no overhead. -->
 
 ## Installation
 
