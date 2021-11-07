@@ -22,7 +22,7 @@
 //!
 //! // All attributes optional.
 //! #[pin_project]
-//! #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+//! #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 //! pub struct A {
 //!     #[pin]
 //!     tip_toe: TipToe,

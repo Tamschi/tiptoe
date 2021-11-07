@@ -28,7 +28,37 @@ cargo add tiptoe --features sync
 ## Example
 
 ```rust
-// TODO_EXAMPLE
+use pin_project::pin_project;
+use tiptoe::{TipToe, TipToed};
+
+// All attributes optional.
+#[pin_project]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct A {
+    #[pin]
+    tip_toe: TipToe,
+}
+
+unsafe impl TipToed for A {
+    type Toe = TipToe;
+    fn tip_toe(&self) -> &TipToe {
+        &self.tip_toe
+    }
+}
+
+fn main() {
+    #[cfg(feature = "sync")]
+    {
+        use tiptoe::Arc;
+
+        let arc = Arc::new(A::default());
+        let inner_ref: &A = &arc;
+
+        let another_arc = unsafe {
+            Arc::borrow_from_inner_ref(&inner_ref)
+        }.clone();
+    }
+}
 ```
 
 ## License
