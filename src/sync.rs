@@ -19,6 +19,10 @@ use core::{
 };
 use tap::{Pipe, Tap};
 
+// spell-checker:ignore eference ounted
+/// An **a**synchronously **r**eference-**c**ounted smart pointer (copy-on-write single-item container).
+///
+/// Unlike with [`alloc::sync::Arc`], the reference-count must be embedded in the payload instance itself.
 #[repr(transparent)]
 pub struct Arc<T: ?Sized + TipToed> {
 	pointer: NonNull<T>,
@@ -204,6 +208,12 @@ unsafe impl<T: ?Sized + TipToed> Sync for Arc<T> where T: Sync + Send {}
 impl<T: ?Sized + TipToed> Unpin for Arc<T> {}
 
 impl<T: ?Sized + TipToed> Arc<T> {
+	/// Creates a new instance of [`Arc<_>`] by moving `value` into a new heap allocation.
+	///
+	/// This increases the intrusive reference-count by 1.
+	///
+	/// Calling this method with an instance with non-zero reference-count is safe,
+	/// but likely to lead to memory leaks (or the process being aborted, if the recorded count is very high).
 	#[must_use]
 	pub fn new(value: T) -> Self
 	where
@@ -214,6 +224,12 @@ impl<T: ?Sized + TipToed> Arc<T> {
 		unsafe { Self::from_raw(NonNull::new_unchecked(instance)) }
 	}
 
+	/// Creates a new instance of [`Pin<Arc<_>>`](`Arc`) by moving `value` into a new heap allocation.
+	///
+	/// This increases the intrusive reference-count by 1.
+	///
+	/// Calling this method with an instance with non-zero reference-count is safe,
+	/// but likely to lead to memory leaks (or the process being aborted, if the recorded count is very high).
 	#[must_use]
 	pub fn pin(value: T) -> Pin<Self>
 	where
@@ -342,17 +358,24 @@ impl<T: ?Sized + TipToed> Arc<T> {
 		&*(inner as *const &T).cast::<Pin<Self>>()
 	}
 
-	#[must_use]
+	/// Unwraps the payload pointer contained in the current instance.
+	///
+	/// This does not decrease the reference-count.
+	#[must_use = "Ignoring this pointer will usually lead to the underlying payload instance leaking."]
 	pub fn leak(this: Self) -> NonNull<T> {
 		let pointer = this.pointer;
 		mem::forget(this);
 		pointer
 	}
 
+	/// Unwraps the payload pointer contained in the current instance.
+	///
+	/// This does not decrease the reference-count.
+	///
 	/// # Safety Notes
 	///
 	/// Keep in mind that the pinning invariants, including the drop guarantee, must still be upheld.
-	#[must_use]
+	#[must_use = "Ignoring this pointer will usually lead to the underlying payload instance leaking."]
 	pub fn leak_pinned(this: Pin<Self>) -> NonNull<T> {
 		let this = unsafe { Pin::into_inner_unchecked(this) };
 		let pointer = this.pointer;
@@ -360,11 +383,14 @@ impl<T: ?Sized + TipToed> Arc<T> {
 		pointer
 	}
 
+	/// Checks whether two instances of [`Arc<T>`] point to the same instance.
 	#[must_use]
 	pub fn ptr_eq(this: &Self, other: &Self) -> bool {
 		this.pointer == other.pointer
 	}
 
+	/// Ensures the payload is exclusively pointed to by this [`Arc<T>`], cloning it if necessary,
+	/// and gives access to a [`Pin<&mut T>`] that safely can *not* be used to clone the [`Arc<T>`].
 	pub fn make_mut(this: &mut Pin<Self>) -> ExclusivePin<T>
 	where
 		T: Sized + ManagedClone,
@@ -390,6 +416,8 @@ impl<T: ?Sized + TipToed> Arc<T> {
 		})
 	}
 
+	/// Checks whether the payload is exclusively pointed to by this [`Arc<T>`] and, if this is the case,
+	/// gives access to a [`Pin<&mut T>`] that safely can *not* be used to clone the [`Arc<T>`].
 	#[must_use]
 	pub fn get_mut(this: &mut Pin<Self>) -> Option<ExclusivePin<T>> {
 		unsafe { this.tip_toe().acquire() }.map(|exclusivity| {

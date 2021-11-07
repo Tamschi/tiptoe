@@ -1,5 +1,50 @@
+//! Generic intrusive smart pointers for Rust.
+//!
+//! > The library name is a pun:
+//! >
+//! > [`TipToe`] is a digit (counter) to be used as member that instances can "balance" on.
+//! > The embedded counter is designed to be as unobtrusive as possible while not in use.
+//!
+//! # Features
+//!
+//! ## `"sync"`
+//!
+//! Enables the [`Arc`] type, which requires [`AtomicUsize`](`core::sync::atomic::AtomicUsize`).
+//!
+//! The type itself and some of its methods are still declared without this feature, but are vacant in that case.
+//!
+//! # Example
+//!
+//! ## Implementing [`TipToed`]
+//!
+//! ```rust
+//! use pin_project::pin_project;
+//! use tiptoe::{TipToe, TipToed};
+//!
+//! #[pin_project]
+//! pub struct A {
+//!     #[pin]
+//!     tip_toe: TipToe,
+//! }
+//!
+//! unsafe impl TipToed for A {
+//!     type Toe = TipToe;
+//!
+//!     fn tip_toe(&self) -> &TipToe {
+//!         &self.tip_toe
+//!     }
+//! }
+//! ```
+//!
+//! `A` is now ready for use with the intrusive pointers defined in this crate.
+//!
+//! Using [pin-project](https://crates.io/crates/pin-project) is optional,
+//! but very helpful if a struct should still be otherwise(!) mutable behind one of them.
+//!
+//! Note that `A` must not be [`Unpin`] (in a way that would interfere with reference-counting).
+
 #![doc(html_root_url = "https://docs.rs/tiptoe/0.0.1")]
-#![warn(clippy::pedantic)]
+#![warn(clippy::pedantic, missing_docs)]
 #![allow(clippy::semicolon_if_nothing_returned)]
 #![no_std]
 
@@ -94,7 +139,7 @@ impl Hash for TipToe {
 pub mod tip_toe_api {
 	//! Low-level [`TipToe`] API for custom intrusive reference-counting containers.
 
-	#[cfg(feature = "sync")]
+	#[cfg(any(feature = "sync", doc))]
 	use core::sync::atomic::Ordering;
 
 	mod private {
@@ -138,6 +183,7 @@ pub mod tip_toe_api {
 
 	use crate::{TipToe, EXCLUSIVITY_MARKER};
 
+	/// Common reference-count manipulation methods.
 	pub trait TipToeExt: Sealed {
 		/// Increments the reference count with [`Ordering::Relaxed`].
 		///
@@ -323,8 +369,16 @@ pub mod tip_toe_api {
 	}
 	impl TipToeExt for TipToe {}
 
+	/// An action to take after decrementing the reference-count.
+	///
+	/// This is a recommendation rather than a fixed requirement,
+	/// but should be followed in most smart pointer and (other) container scenarios.
 	pub enum DecrementFollowup {
+		/// There are (usually!) further shared references.
+		/// The instance should in most cases be left as-is.
 		LeakIt,
+		/// No further references are expected to exist now.
+		/// The instance can (usually!) be dropped in place or, if [`Unpin`] or not pinned, moved now.
 		DropOrMoveIt,
 	}
 
@@ -370,7 +424,7 @@ use tip_toe_api::{Exclusivity, Sealed};
 /// > The [`TipToe`] also mustn't be otherwise decremented (which can only be guaranteed if it's not public) in violation of sound reference-counting,
 /// > but that's `unsafe` anyway.
 ///
-/// [`TipToe::tip_toe`] must not have effects.
+/// [`TipToed::tip_toe`] must not have any effects, that is: It must not affect or effect any observable changes, other than through its return value.
 ///
 /// > Mainly so the callee doesn't observe its address,
 /// > which gives this crate a bit more flexibility regarding implementation details.
@@ -378,12 +432,10 @@ pub unsafe trait TipToed {
 	/// [`TipToe`].
 	type Toe: Sealed;
 
-	/// > I recommend inlining this.
-	#[allow(unused_attributes)]
-	fn tip_toe(&self) -> &TipToe {
-		#![inline(always)]
-		todo!() // Filled in by implementor.
-	}
+	/// Gets a reference to the instance's reference counter.
+	///
+	/// > I highly recommend inlining this.
+	fn tip_toe(&self) -> &TipToe;
 }
 
 unsafe impl<T> TipToed for ManuallyDrop<T>
@@ -454,6 +506,7 @@ pub struct ExclusivePin<'a, T: ?Sized> {
 	_exclusivity: Exclusivity,
 }
 impl<'a, T: ?Sized> ExclusivePin<'a, T> {
+	/// Creates a new instance of [`ExclusivePin`] from a given [`Exclusivity`] and [`Pin<&mut T>`](`Pin`).
 	pub fn new(exclusivity: Exclusivity, reference: Pin<&'a mut T>) -> Self {
 		Self {
 			reference,
