@@ -314,7 +314,7 @@ pub mod tip_toe_api {
 					old_count
 				}
 			} {
-				EXCLUSIVITY_MARKER.. => abort(),
+				EXCLUSIVITY_MARKER..=usize::MAX => abort(),
 				1 => DecrementFollowup::DropOrMoveIt,
 				_ => DecrementFollowup::LeakIt,
 			}
