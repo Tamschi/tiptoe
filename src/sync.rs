@@ -11,7 +11,6 @@ use core::{
 	borrow::Borrow,
 	fmt::{self, Debug, Display, Formatter, Pointer},
 	hash::{Hash, Hasher},
-	marker::PhantomData,
 	mem::{self, ManuallyDrop},
 	ops::Deref,
 	pin::Pin,
@@ -26,7 +25,6 @@ use tap::{Pipe, Tap};
 #[repr(transparent)]
 pub struct Arc<T: ?Sized + TipToed> {
 	pointer: NonNull<T>,
-	_phantom: PhantomData<T>,
 }
 
 impl<T: ?Sized + TipToed> AsRef<T> for Arc<T> {
@@ -49,7 +47,6 @@ impl<T: ?Sized + TipToed> Clone for Arc<T> {
 		self.tip_toe().increment();
 		Self {
 			pointer: self.pointer,
-			_phantom: PhantomData,
 		}
 	}
 
@@ -297,10 +294,7 @@ impl<T: ?Sized + TipToed> Arc<T> {
 			0,
 			"Called `tiptoe::Arc::from_raw` with null pointer."
 		);
-		Self {
-			pointer: raw_value,
-			_phantom: PhantomData,
-		}
+		Self { pointer: raw_value }
 	}
 
 	/// Constructs a [pinned](`core::pin`) [`Arc`] instance from a compatible value pointer.
@@ -327,11 +321,7 @@ impl<T: ?Sized + TipToed> Arc<T> {
 			0,
 			"Called `tiptoe::Arc::from_raw` with null pointer."
 		);
-		Self {
-			pointer: raw_value,
-			_phantom: PhantomData,
-		}
-		.pipe(|this| Pin::new_unchecked(this))
+		Self { pointer: raw_value }.pipe(|this| Pin::new_unchecked(this))
 	}
 
 	/// Unsafely borrows a shared reference to an [`Arc`]-managed instance as [`Arc`].

@@ -22,7 +22,7 @@ TODO_README_DESCRIPTION
 Please use [cargo-edit](https://crates.io/crates/cargo-edit) to always add the latest version of this library:
 
 ```cmd
-cargo add tiptoe
+cargo add tiptoe --features sync
 ```
 
 ## Example

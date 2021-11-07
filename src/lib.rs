@@ -3,6 +3,7 @@
 //! > The library name is a pun:
 //! >
 //! > [`TipToe`] is a digit (counter) to be used as member that instances can "balance" on.
+//! >
 //! > The embedded counter is designed to be as unobtrusive as possible while not in use.
 //!
 //! # Features
@@ -10,8 +11,6 @@
 //! ## `"sync"`
 //!
 //! Enables the [`Arc`] type, which requires [`AtomicUsize`](`core::sync::atomic::AtomicUsize`).
-//!
-//! The type itself and some of its methods are still declared without this feature, but are vacant in that case.
 //!
 //! # Example
 //!
@@ -21,7 +20,9 @@
 //! use pin_project::pin_project;
 //! use tiptoe::{TipToe, TipToed};
 //!
+//! // All attributes optional.
 //! #[pin_project]
+//! #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 //! pub struct A {
 //!     #[pin]
 //!     tip_toe: TipToe,
@@ -37,6 +38,8 @@
 //! ```
 //!
 //! `A` is now ready for use with the intrusive pointers defined in this crate.
+//!
+//! The trait derives are optional, but included to show that [`TipToe`] doesn't interfere here (except for [`Copy`]).
 //!
 //! Using [pin-project](https://crates.io/crates/pin-project) is optional,
 //! but very helpful if a struct should still be otherwise(!) mutable behind one of them.
@@ -98,8 +101,8 @@ impl TipToe {
 	/// Creates as new [`TipToe`] instance.
 	///
 	/// > The name is a pun on this being a refcount digit (implementation detail: It's base [`usize::MAX`].) and
-	/// > a member that the instance can be balanced on. If it "tips over" (becomes `0`) then the instance loses its
-	/// > footing and is dropped - or caught and moved elsewhere instead.
+	/// > a member that the instance can stand on. If it "tips over" (becomes `0`) then the instance loses its
+	/// > footing and may be dropped - or "caught" and moved elsewhere instead.
 	#[must_use]
 	pub fn new() -> Self {
 		Self::default()
@@ -499,7 +502,7 @@ where
 	}
 }
 
-/// A [`Pin<&'a mut T>`](`Pin`).
+/// A [`Pin<&'a mut T>`](`Pin`), but also guarding against handle clones.
 #[must_use]
 pub struct ExclusivePin<'a, T: ?Sized> {
 	reference: Pin<&'a mut T>,
