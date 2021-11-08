@@ -28,6 +28,12 @@ Please use [cargo-edit](https://crates.io/crates/cargo-edit) to always add the l
 cargo add tiptoe --features sync
 ```
 
+## Features
+
+### `"sync"`
+
+Enables the [`Arc`] type, which requires [`AtomicUsize`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicUsize.html).
+
 ## Example
 
 ```rust
