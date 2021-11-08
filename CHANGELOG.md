@@ -4,6 +4,6 @@
 
 ## 0.0.1
 
-2021-TODO_MONTH-TODO_DAY
+2021-11-08
 
 Initial unstable release
