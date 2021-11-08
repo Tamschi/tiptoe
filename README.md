@@ -5,7 +5,7 @@
 [![Docs.rs](https://docs.rs/tiptoe/badge.svg)](https://docs.rs/tiptoe)
 
 ![Rust 1.51](https://img.shields.io/static/v1?logo=Rust&label=&message=1.51&color=grey)
-[![CI](https://github.com/Tamschi/tiptoe/workflows/CI/badge.svg?branch=develop)](https://github.com/Tamschi/tiptoe/actions?query=workflow%3ACI+branch%3Adevelop)
+[![CI](https://github.com/Tamschi/tiptoe/workflows/CI/badge.svg?branch=unstable)](https://github.com/Tamschi/tiptoe/actions?query=workflow%3ACI+branch%3Aunstable)
 ![Crates.io - License](https://img.shields.io/crates/l/tiptoe/0.0.1)
 
 [![GitHub](https://img.shields.io/static/v1?logo=GitHub&label=&message=%20&color=grey)](https://github.com/Tamschi/tiptoe)
