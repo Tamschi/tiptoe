@@ -89,7 +89,7 @@ const EXCLUSIVITY_MARKER: usize = usize::MAX - (usize::MAX - isize::MAX as usize
 ///
 /// Not [`Unpin`].
 ///
-/// Always [`Send`] but [`Sync`] iff the `"sync"` feature is enabled.
+/// Always [`Send`] but [`Sync`] only if the `"sync"` feature is enabled.
 #[derive(Debug, Default)]
 pub struct TipToe {
 	#[cfg(feature = "sync")]
@@ -418,7 +418,10 @@ use ref_counter_api::{Exclusivity, Sealed};
 
 /// `(Sealed)` Common trait of [`tiptoe`](`crate`)'s embeddable reference counter types.
 pub trait RefCounter: Sealed {}
-impl<T> RefCounter for T where T: Sealed {}
+
+// This could be implemented over `T: Sealed`,
+// but doing so for each type individually lists them in the documentation.
+impl RefCounter for TipToe {}
 
 /// Enables intrusive reference counting for a structure.
 ///
