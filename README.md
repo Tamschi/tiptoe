@@ -38,21 +38,21 @@ Enables the [`Arc`] type, which requires [`AtomicUsize`](https://doc.rust-lang.o
 
 ```rust
 use pin_project::pin_project;
-use tiptoe::{TipToe, TipToed};
+use tiptoe::{TipToe, RefCounted};
 
 // All attributes optional.
 #[pin_project]
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct A {
     #[pin]
-    tip_toe: TipToe,
+    ref_counter: TipToe,
 }
 
-unsafe impl TipToed for A {
+unsafe impl RefCounted for A {
     type RefCounter = TipToe;
 
-    fn tip_toe(&self) -> &TipToe {
-        &self.tip_toe
+    fn ref_counter(&self) -> &TipToe {
+        &self.ref_counter
     }
 }
 

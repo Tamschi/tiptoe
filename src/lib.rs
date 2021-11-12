@@ -16,25 +16,25 @@
 //!
 //! # Example
 //!
-//! ## Implementing [`TipToed`]
+//! ## Implementing [`RefCounted`]
 //!
 //! ```rust
 //! use pin_project::pin_project;
-//! use tiptoe::{TipToe, TipToed};
+//! use tiptoe::{TipToe, RefCounted};
 //!
 //! // All attributes optional.
 //! #[pin_project]
 //! #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 //! pub struct A {
 //!     #[pin]
-//!     tip_toe: TipToe,
+//!     ref_counter: TipToe,
 //! }
 //!
-//! unsafe impl TipToed for A {
+//! unsafe impl RefCounted for A {
 //!     type RefCounter = TipToe;
 //!
-//!     fn tip_toe(&self) -> &TipToe {
-//!         &self.tip_toe
+//!     fn ref_counter(&self) -> &TipToe {
+//!         &self.ref_counter
 //!     }
 //! }
 //! ```
@@ -436,30 +436,30 @@ impl RefCounter for TipToe {}
 /// > The [`TipToe`] also mustn't be otherwise decremented (which can only be guaranteed if it's not public) in violation of sound reference-counting,
 /// > but that's `unsafe` anyway.
 ///
-/// [`TipToed::tip_toe`] must not have any effects, that is: It must not affect or effect any observable changes, other than through its return value.
+/// [`RefCounted::ref_counter`] must not have any effects, that is: It must not affect or effect any observable changes, other than through its return value.
 ///
 /// > Mainly so the callee doesn't observe its address,
 /// > which gives this crate a bit more flexibility regarding implementation details.
-pub unsafe trait TipToed {
+pub unsafe trait RefCounted {
 	/// [`TipToe`].
 	type RefCounter: RefCounter;
 
 	/// Gets a reference to the instance's reference counter.
 	///
 	/// > I highly recommend inlining this.
-	fn tip_toe(&self) -> &TipToe;
+	fn ref_counter(&self) -> &TipToe;
 }
 
-unsafe impl<T> TipToed for ManuallyDrop<T>
+unsafe impl<T> RefCounted for ManuallyDrop<T>
 where
-	T: TipToed,
+	T: RefCounted,
 {
 	type RefCounter = T::RefCounter;
 
-	fn tip_toe(&self) -> &TipToe {
+	fn ref_counter(&self) -> &TipToe {
 		#![allow(clippy::inline_always)]
 		#![inline(always)]
-		(**self).tip_toe()
+		(**self).ref_counter()
 	}
 }
 
