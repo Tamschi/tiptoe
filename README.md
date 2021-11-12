@@ -38,7 +38,7 @@ Enables the [`Arc`] type, which requires [`AtomicUsize`](https://doc.rust-lang.o
 
 ```rust
 use pin_project::pin_project;
-use tiptoe::{TipToe, RefCounted};
+use tiptoe::{IntrusivelyCountable, TipToe};
 
 // All attributes optional.
 #[pin_project]
@@ -48,7 +48,7 @@ pub struct A {
     ref_counter: TipToe,
 }
 
-unsafe impl RefCounted for A {
+unsafe impl IntrusivelyCountable for A {
     type RefCounter = TipToe;
 
     fn ref_counter(&self) -> &TipToe {

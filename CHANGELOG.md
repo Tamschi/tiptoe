@@ -7,7 +7,7 @@
 TODO: Date
 
 - **Breaking changes**:
-  - Renamed trait `TipToed` to `RefCounted` and its function `tip_toe` to `ref_counter`.
+  - Renamed trait `TipToed` to `IntrusivelyCountable` and its function `tip_toe` to `ref_counter`.
 
 ## 0.0.1
 

@@ -16,11 +16,11 @@
 //!
 //! # Example
 //!
-//! ## Implementing [`RefCounted`]
+//! ## Implementing [`IntrusivelyCountable`]
 //!
 //! ```rust
 //! use pin_project::pin_project;
-//! use tiptoe::{TipToe, RefCounted};
+//! use tiptoe::{IntrusivelyCountable, TipToe};
 //!
 //! // All attributes optional.
 //! #[pin_project]
@@ -30,7 +30,7 @@
 //!     ref_counter: TipToe,
 //! }
 //!
-//! unsafe impl RefCounted for A {
+//! unsafe impl IntrusivelyCountable for A {
 //!     type RefCounter = TipToe;
 //!
 //!     fn ref_counter(&self) -> &TipToe {
@@ -436,11 +436,11 @@ impl RefCounter for TipToe {}
 /// > The [`TipToe`] also mustn't be otherwise decremented (which can only be guaranteed if it's not public) in violation of sound reference-counting,
 /// > but that's `unsafe` anyway.
 ///
-/// [`RefCounted::ref_counter`] must not have any effects, that is: It must not affect or effect any observable changes, other than through its return value.
+/// [`IntrusivelyCountable::ref_counter`] must not have any effects, that is: It must not affect or effect any observable changes, other than through its return value.
 ///
 /// > Mainly so the callee doesn't observe its address,
 /// > which gives this crate a bit more flexibility regarding implementation details.
-pub unsafe trait RefCounted {
+pub unsafe trait IntrusivelyCountable {
 	/// [`TipToe`].
 	type RefCounter: RefCounter;
 
@@ -450,9 +450,9 @@ pub unsafe trait RefCounted {
 	fn ref_counter(&self) -> &TipToe;
 }
 
-unsafe impl<T> RefCounted for ManuallyDrop<T>
+unsafe impl<T> IntrusivelyCountable for ManuallyDrop<T>
 where
-	T: RefCounted,
+	T: IntrusivelyCountable,
 {
 	type RefCounter = T::RefCounter;
 

@@ -1,6 +1,6 @@
 use crate::{
 	ref_counter_api::{DecrementFollowup, RefCounterExt},
-	ExclusivePin, ManagedClone, RefCounted,
+	ExclusivePin, IntrusivelyCountable, ManagedClone,
 };
 use alloc::{
 	borrow::{Cow, ToOwned},
@@ -23,23 +23,23 @@ use tap::{Pipe, Tap};
 ///
 /// Unlike with [`alloc::sync::Arc`], the reference-count must be embedded in the payload instance itself.
 #[repr(transparent)]
-pub struct Arc<T: ?Sized + RefCounted> {
+pub struct Arc<T: ?Sized + IntrusivelyCountable> {
 	pointer: NonNull<T>,
 }
 
-impl<T: ?Sized + RefCounted> AsRef<T> for Arc<T> {
+impl<T: ?Sized + IntrusivelyCountable> AsRef<T> for Arc<T> {
 	fn as_ref(&self) -> &T {
 		self
 	}
 }
 
-impl<T: ?Sized + RefCounted> Borrow<T> for Arc<T> {
+impl<T: ?Sized + IntrusivelyCountable> Borrow<T> for Arc<T> {
 	fn borrow(&self) -> &T {
 		self
 	}
 }
 
-impl<T: ?Sized + RefCounted> Clone for Arc<T> {
+impl<T: ?Sized + IntrusivelyCountable> Clone for Arc<T> {
 	/// Makes a clone of this [`Arc`], pointing to the same instance.
 	///
 	/// This increases the strong reference count by 1.
@@ -57,7 +57,7 @@ impl<T: ?Sized + RefCounted> Clone for Arc<T> {
 	}
 }
 
-impl<T: ?Sized + RefCounted> Debug for Arc<T>
+impl<T: ?Sized + IntrusivelyCountable> Debug for Arc<T>
 where
 	T: Debug,
 {
@@ -66,7 +66,7 @@ where
 	}
 }
 
-impl<T: ?Sized + RefCounted> Default for Arc<T>
+impl<T: ?Sized + IntrusivelyCountable> Default for Arc<T>
 where
 	T: Default,
 {
@@ -75,7 +75,7 @@ where
 	}
 }
 
-impl<T: ?Sized + RefCounted> Deref for Arc<T> {
+impl<T: ?Sized + IntrusivelyCountable> Deref for Arc<T> {
 	type Target = T;
 
 	fn deref(&self) -> &Self::Target {
@@ -83,7 +83,7 @@ impl<T: ?Sized + RefCounted> Deref for Arc<T> {
 	}
 }
 
-impl<T: ?Sized + RefCounted> Display for Arc<T>
+impl<T: ?Sized + IntrusivelyCountable> Display for Arc<T>
 where
 	T: Display,
 {
@@ -92,7 +92,7 @@ where
 	}
 }
 
-impl<T: ?Sized + RefCounted> Drop for Arc<T> {
+impl<T: ?Sized + IntrusivelyCountable> Drop for Arc<T> {
 	fn drop(&mut self) {
 		unsafe {
 			match self.ref_counter().decrement() {
@@ -103,9 +103,9 @@ impl<T: ?Sized + RefCounted> Drop for Arc<T> {
 	}
 }
 
-impl<T: ?Sized + RefCounted> Eq for Arc<T> where T: Eq {}
+impl<T: ?Sized + IntrusivelyCountable> Eq for Arc<T> where T: Eq {}
 
-impl<T: ?Sized + RefCounted> From<Box<T>> for Arc<T> {
+impl<T: ?Sized + IntrusivelyCountable> From<Box<T>> for Arc<T> {
 	/// Converts a [`Box`] into an [`Arc`] without reallocating.
 	fn from(box_: Box<T>) -> Self {
 		box_.ref_counter().increment();
@@ -113,7 +113,7 @@ impl<T: ?Sized + RefCounted> From<Box<T>> for Arc<T> {
 	}
 }
 
-impl<'a, B: ?Sized + RefCounted> From<Cow<'a, B>> for Arc<B>
+impl<'a, B: ?Sized + IntrusivelyCountable> From<Cow<'a, B>> for Arc<B>
 where
 	B: ToOwned,
 	Arc<B>: From<B::Owned>,
@@ -128,19 +128,19 @@ where
 	}
 }
 
-impl<T: Sized + RefCounted> From<T> for Arc<T> {
+impl<T: Sized + IntrusivelyCountable> From<T> for Arc<T> {
 	fn from(value: T) -> Self {
 		Self::new(value)
 	}
 }
 
-impl<T: Sized + RefCounted> From<T> for Pin<Arc<T>> {
+impl<T: Sized + IntrusivelyCountable> From<T> for Pin<Arc<T>> {
 	fn from(value: T) -> Self {
 		Arc::pin(value)
 	}
 }
 
-impl<T: ?Sized + RefCounted> From<Pin<Arc<T>>> for Arc<T>
+impl<T: ?Sized + IntrusivelyCountable> From<Pin<Arc<T>>> for Arc<T>
 where
 	T: Unpin,
 {
@@ -149,7 +149,7 @@ where
 	}
 }
 
-impl<T: ?Sized + RefCounted> From<Arc<T>> for Pin<Arc<T>>
+impl<T: ?Sized + IntrusivelyCountable> From<Arc<T>> for Pin<Arc<T>>
 where
 	T: Unpin,
 {
@@ -158,7 +158,7 @@ where
 	}
 }
 
-impl<T: ?Sized + RefCounted> Hash for Arc<T>
+impl<T: ?Sized + IntrusivelyCountable> Hash for Arc<T>
 where
 	T: Hash,
 {
@@ -167,7 +167,7 @@ where
 	}
 }
 
-impl<T: ?Sized + RefCounted> Ord for Arc<T>
+impl<T: ?Sized + IntrusivelyCountable> Ord for Arc<T>
 where
 	T: Ord,
 {
@@ -176,7 +176,8 @@ where
 	}
 }
 
-impl<T: ?Sized + RefCounted, O: ?Sized + RefCounted> PartialEq<Arc<O>> for Arc<T>
+impl<T: ?Sized + IntrusivelyCountable, O: ?Sized + IntrusivelyCountable> PartialEq<Arc<O>>
+	for Arc<T>
 where
 	T: PartialEq<O>,
 {
@@ -185,7 +186,8 @@ where
 	}
 }
 
-impl<T: ?Sized + RefCounted, O: ?Sized + RefCounted> PartialOrd<Arc<O>> for Arc<T>
+impl<T: ?Sized + IntrusivelyCountable, O: ?Sized + IntrusivelyCountable> PartialOrd<Arc<O>>
+	for Arc<T>
 where
 	T: PartialOrd<O>,
 {
@@ -194,17 +196,17 @@ where
 	}
 }
 
-impl<T: ?Sized + RefCounted> Pointer for Arc<T> {
+impl<T: ?Sized + IntrusivelyCountable> Pointer for Arc<T> {
 	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
 		Pointer::fmt(&self.pointer, f)
 	}
 }
 
-unsafe impl<T: ?Sized + RefCounted> Send for Arc<T> where T: Sync + Send {}
-unsafe impl<T: ?Sized + RefCounted> Sync for Arc<T> where T: Sync + Send {}
-impl<T: ?Sized + RefCounted> Unpin for Arc<T> {}
+unsafe impl<T: ?Sized + IntrusivelyCountable> Send for Arc<T> where T: Sync + Send {}
+unsafe impl<T: ?Sized + IntrusivelyCountable> Sync for Arc<T> where T: Sync + Send {}
+impl<T: ?Sized + IntrusivelyCountable> Unpin for Arc<T> {}
 
-impl<T: ?Sized + RefCounted> Arc<T> {
+impl<T: ?Sized + IntrusivelyCountable> Arc<T> {
 	/// Creates a new instance of [`Arc<_>`] by moving `value` into a new heap allocation.
 	///
 	/// This increases the intrusive reference-count by 1.
@@ -389,7 +391,7 @@ impl<T: ?Sized + RefCounted> Arc<T> {
 			*this = unsafe {
 				// Safety:
 				// No effective encapsulation change happens.
-				// `Self::pin` does call `RefCounted::ref_counter`, but this is legal as that method is not allowed to have effects.
+				// `Self::pin` does call `IntrusivelyCountable::ref_counter`, but this is legal as that method is not allowed to have effects.
 				(&**this).managed_clone().pipe(Self::pin)
 			};
 
@@ -429,7 +431,7 @@ impl<T: ?Sized + RefCounted> Arc<T> {
 	pub fn downcast<U>(this: Self) -> Result<Arc<U>, Self>
 	where
 		T: Any,
-		U: Any + RefCounted,
+		U: Any + IntrusivelyCountable,
 	{
 		if Any::type_id(&*this) == TypeId::of::<U>() {
 			Ok(unsafe { Arc::from_raw(Arc::leak(this).cast()) })
@@ -446,7 +448,7 @@ impl<T: ?Sized + RefCounted> Arc<T> {
 	pub fn downcast_pinned<U>(this: Pin<Self>) -> Result<Pin<Arc<U>>, Pin<Self>>
 	where
 		T: Any,
-		U: Any + RefCounted,
+		U: Any + IntrusivelyCountable,
 	{
 		if Any::type_id(&*this) == TypeId::of::<U>() {
 			Ok(unsafe { Arc::pinned_from_raw(Arc::leak_pinned(this).cast()) })
