@@ -8,6 +8,7 @@ TODO: Date
 
 - **Breaking changes**:
   - Renamed trait `TipToed` to `IntrusivelyCountable` and its function `tip_toe` to `ref_counter`.
+  - Corrected signature of `IntrusivelyCountable::ref_counter` to use its associated type.
 
 ## 0.0.1
 

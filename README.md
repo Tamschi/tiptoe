@@ -51,7 +51,7 @@ pub struct A {
 unsafe impl IntrusivelyCountable for A {
     type RefCounter = TipToe;
 
-    fn ref_counter(&self) -> &TipToe {
+    fn ref_counter(&self) -> &Self::RefCounter {
         &self.ref_counter
     }
 }

@@ -33,7 +33,7 @@
 //! unsafe impl IntrusivelyCountable for A {
 //!     type RefCounter = TipToe;
 //!
-//!     fn ref_counter(&self) -> &TipToe {
+//!     fn ref_counter(&self) -> &Self::RefCounter {
 //!         &self.ref_counter
 //!     }
 //! }
@@ -447,7 +447,7 @@ pub unsafe trait IntrusivelyCountable {
 	/// Gets a reference to the instance's reference counter.
 	///
 	/// > I highly recommend inlining this.
-	fn ref_counter(&self) -> &TipToe;
+	fn ref_counter(&self) -> &Self::RefCounter;
 }
 
 unsafe impl<T> IntrusivelyCountable for ManuallyDrop<T>
@@ -456,7 +456,7 @@ where
 {
 	type RefCounter = T::RefCounter;
 
-	fn ref_counter(&self) -> &TipToe {
+	fn ref_counter(&self) -> &Self::RefCounter {
 		#![allow(clippy::inline_always)]
 		#![inline(always)]
 		(**self).ref_counter()
