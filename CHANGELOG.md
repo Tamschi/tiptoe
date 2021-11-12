@@ -2,9 +2,9 @@
 
 <!-- markdownlint-disable no-trailing-punctuation -->
 
-## next
+## 0.0.2
 
-TODO: Date
+2021-11-12
 
 - **Breaking changes**:
   - Renamed trait `TipToed` to `IntrusivelyCountable` and its function `tip_toe` to `ref_counter`.
