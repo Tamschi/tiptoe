@@ -16,25 +16,25 @@
 //!
 //! # Example
 //!
-//! ## Implementing [`TipToed`]
+//! ## Implementing [`IntrusivelyCountable`]
 //!
 //! ```rust
 //! use pin_project::pin_project;
-//! use tiptoe::{TipToe, TipToed};
+//! use tiptoe::{IntrusivelyCountable, TipToe};
 //!
 //! // All attributes optional.
 //! #[pin_project]
 //! #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 //! pub struct A {
 //!     #[pin]
-//!     tip_toe: TipToe,
+//!     ref_counter: TipToe,
 //! }
 //!
-//! unsafe impl TipToed for A {
+//! unsafe impl IntrusivelyCountable for A {
 //!     type RefCounter = TipToe;
 //!
-//!     fn tip_toe(&self) -> &TipToe {
-//!         &self.tip_toe
+//!     fn ref_counter(&self) -> &Self::RefCounter {
+//!         &self.ref_counter
 //!     }
 //! }
 //! ```
@@ -48,7 +48,7 @@
 //!
 //! Note that `A` must not be [`Unpin`] (in a way that would interfere with reference-counting).
 
-#![doc(html_root_url = "https://docs.rs/tiptoe/0.0.1")]
+#![doc(html_root_url = "https://docs.rs/tiptoe/0.0.2")]
 #![warn(clippy::pedantic, missing_docs)]
 #![allow(clippy::semicolon_if_nothing_returned)]
 #![no_std]
@@ -436,30 +436,30 @@ impl RefCounter for TipToe {}
 /// > The [`TipToe`] also mustn't be otherwise decremented (which can only be guaranteed if it's not public) in violation of sound reference-counting,
 /// > but that's `unsafe` anyway.
 ///
-/// [`TipToed::tip_toe`] must not have any effects, that is: It must not affect or effect any observable changes, other than through its return value.
+/// [`IntrusivelyCountable::ref_counter`] must not have any effects, that is: It must not affect or effect any observable changes, other than through its return value.
 ///
 /// > Mainly so the callee doesn't observe its address,
 /// > which gives this crate a bit more flexibility regarding implementation details.
-pub unsafe trait TipToed {
+pub unsafe trait IntrusivelyCountable {
 	/// [`TipToe`].
 	type RefCounter: RefCounter;
 
 	/// Gets a reference to the instance's reference counter.
 	///
 	/// > I highly recommend inlining this.
-	fn tip_toe(&self) -> &TipToe;
+	fn ref_counter(&self) -> &Self::RefCounter;
 }
 
-unsafe impl<T> TipToed for ManuallyDrop<T>
+unsafe impl<T> IntrusivelyCountable for ManuallyDrop<T>
 where
-	T: TipToed,
+	T: IntrusivelyCountable,
 {
 	type RefCounter = T::RefCounter;
 
-	fn tip_toe(&self) -> &TipToe {
+	fn ref_counter(&self) -> &Self::RefCounter {
 		#![allow(clippy::inline_always)]
 		#![inline(always)]
-		(**self).tip_toe()
+		(**self).ref_counter()
 	}
 }
 

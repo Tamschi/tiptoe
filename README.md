@@ -6,7 +6,7 @@
 
 ![Rust 1.51](https://img.shields.io/static/v1?logo=Rust&label=&message=1.51&color=grey)
 [![CI](https://github.com/Tamschi/tiptoe/workflows/CI/badge.svg?branch=unstable)](https://github.com/Tamschi/tiptoe/actions?query=workflow%3ACI+branch%3Aunstable)
-![Crates.io - License](https://img.shields.io/crates/l/tiptoe/0.0.1)
+![Crates.io - License](https://img.shields.io/crates/l/tiptoe/0.0.2)
 
 [![GitHub](https://img.shields.io/static/v1?logo=GitHub&label=&message=%20&color=grey)](https://github.com/Tamschi/tiptoe)
 [![open issues](https://img.shields.io/github/issues-raw/Tamschi/tiptoe)](https://github.com/Tamschi/tiptoe/issues)
@@ -38,21 +38,21 @@ Enables the [`Arc`] type, which requires [`AtomicUsize`](https://doc.rust-lang.o
 
 ```rust
 use pin_project::pin_project;
-use tiptoe::{TipToe, TipToed};
+use tiptoe::{IntrusivelyCountable, TipToe};
 
 // All attributes optional.
 #[pin_project]
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct A {
     #[pin]
-    tip_toe: TipToe,
+    ref_counter: TipToe,
 }
 
-unsafe impl TipToed for A {
+unsafe impl IntrusivelyCountable for A {
     type RefCounter = TipToe;
 
-    fn tip_toe(&self) -> &TipToe {
-        &self.tip_toe
+    fn ref_counter(&self) -> &Self::RefCounter {
+        &self.ref_counter
     }
 }
 

@@ -1,14 +1,14 @@
 [package]
 name = "tiptoe"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Tamme Schichler <tamme@schichler.dev>"]
 edition = "2018"
 description = "An easy-to-support intrusively reference-counting smart pointer." # TODO: \rs. Implement once non-generically for both `Arc` and `Rc`, no overhead.
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Tamschi/tiptoe"
-homepage = "https://github.com/Tamschi/tiptoe/tree/v0.0.1"
-documentation = "https://docs.rs/tiptoe/0.0.1"
-keywords = ["arc", "rc", "intrusive"]
+homepage = "https://github.com/Tamschi/tiptoe/tree/v0.0.2"
+documentation = "https://docs.rs/tiptoe/0.0.2"
+keywords = ["arc", "rc", "intrusive", "no_std"]
 categories = ["rust-patterns"]
 readme = "README.md"
 include = [
