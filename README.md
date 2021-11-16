@@ -32,7 +32,7 @@ cargo add tiptoe --features sync
 
 ### `"sync"`
 
-Enables the [`Arc`] type, which requires [`AtomicUsize`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicUsize.html).
+Enables the [`Arc`](https://docs.rs/tiptoe/latest/tiptoe/struct.Arc.html) type, which requires [`AtomicUsize`](https://doc.rust-lang.org/stable/core/sync/atomic/struct.AtomicUsize.html).
 
 ## Example
 
