@@ -479,6 +479,7 @@ pub trait ManagedClone: Sized {
 	///
 	/// You may not use it in any way that could have side-effects before encapsulating the clone.
 	/// This also means you may not drop the clone. Forgetting it is fine.
+	#[must_use]
 	unsafe fn managed_clone(&self) -> Self;
 
 	/// # Safety

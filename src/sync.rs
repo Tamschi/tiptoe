@@ -263,7 +263,7 @@ impl<T: ?Sized + IntrusivelyCountable> Arc<T> {
 			Some(exclusivity) => unsafe {
 				drop(exclusivity); // We still have exclusivity until we relinquish control. However, we do want to manipulate the reference count.
 				Ok(ManuallyDrop::take(
-					&mut mem::transmute::<Self, Arc<ManuallyDrop<T>>>(this)
+					mem::transmute::<Self, Arc<ManuallyDrop<T>>>(this)
 						.pointer
 						.as_mut(),
 				)
