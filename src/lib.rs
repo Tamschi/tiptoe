@@ -54,9 +54,8 @@
 #![no_std]
 
 #[cfg(doctest)]
-pub mod readme {
-	doc_comment::doctest!("../README.md");
-}
+#[doc = include_str!("../README.md")]
+mod readme {}
 
 extern crate alloc;
 
