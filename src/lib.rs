@@ -124,6 +124,7 @@ impl PartialEq for TipToe {
 
 impl Eq for TipToe {}
 
+#[allow(clippy::non_canonical_partial_ord_impl)]
 impl PartialOrd for TipToe {
 	fn partial_cmp(&self, _: &Self) -> Option<cmp::Ordering> {
 		Some(cmp::Ordering::Equal)
@@ -152,6 +153,7 @@ pub mod ref_counter_api {
 	mod private {
 		#[cfg(not(feature = "sync"))]
 		use core::cell::Cell;
+		use core::ptr;
 		#[cfg(feature = "sync")]
 		use core::sync::atomic::AtomicUsize;
 
@@ -165,7 +167,7 @@ pub mod ref_counter_api {
 
 			fn refcount_ptr(&self) -> *mut usize {
 				#[cfg(feature = "sync")]
-				return self.refcount() as *const AtomicUsize as *mut usize;
+				return ptr::from_ref::<AtomicUsize>(self.refcount()) as *mut usize;
 				#[cfg(not(feature = "sync"))]
 				return self.refcount().as_ptr();
 			}
@@ -266,6 +268,7 @@ pub mod ref_counter_api {
 		/// and then dropping the resulting instance.
 		#[inline]
 		unsafe fn decrement(&self) -> DecrementFollowup {
+			#[allow(clippy::blocks_in_conditions)]
 			match {
 				#[cfg(feature = "sync")]
 				{
@@ -303,6 +306,7 @@ pub mod ref_counter_api {
 		/// Calling this method is equivalent to calling [`Rc::from_raw`](`crate::Rc::from_raw`)
 		/// and then dropping the resulting instance.
 		unsafe fn decrement_relaxed(&self) -> DecrementFollowup {
+			#[allow(clippy::blocks_in_conditions)]
 			match {
 				#[cfg(feature = "sync")]
 				{
@@ -329,6 +333,7 @@ pub mod ref_counter_api {
 		///
 		/// Dropping the [`Exclusivity`] performs a write to a remembered address, so **the borrowed instance must not be moved** until then.
 		unsafe fn acquire(&self) -> Option<Exclusivity> {
+			#[allow(clippy::blocks_in_conditions)]
 			match {
 				#[cfg(feature = "sync")]
 				{
@@ -358,6 +363,7 @@ pub mod ref_counter_api {
 		/// This is only suitable for synchronous reference-counting.
 		#[must_use]
 		fn acquire_relaxed(&self) -> Option<Exclusivity> {
+			#[allow(clippy::blocks_in_conditions)]
 			match {
 				#[cfg(feature = "sync")]
 				{

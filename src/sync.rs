@@ -14,7 +14,7 @@ use core::{
 	mem::{self, ManuallyDrop},
 	ops::Deref,
 	pin::Pin,
-	ptr::NonNull,
+	ptr::{self, NonNull},
 };
 use tap::{Pipe, Tap};
 
@@ -335,7 +335,7 @@ impl<T: ?Sized + IntrusivelyCountable> Arc<T> {
 	/// `inner` must be a reference to a reference to an instance managed by [`Arc`].
 	#[must_use]
 	pub unsafe fn borrow_from_inner_ref<'a>(inner: &'a &'a T) -> &'a Self {
-		&*(inner as *const &T).cast::<Self>()
+		&*ptr::from_ref::<&T>(inner).cast::<Self>()
 	}
 
 	/// Unsafely borrows a shared reference to a [`Pin<Arc>`]-managed instance as [`Pin<Arc>`].
@@ -347,7 +347,7 @@ impl<T: ?Sized + IntrusivelyCountable> Arc<T> {
 	/// `inner` must be a reference to a reference to an instance managed by [`Pin<Arc>`].
 	#[must_use]
 	pub unsafe fn borrow_pin_from_inner_ref<'a>(inner: &'a &'a T) -> &'a Pin<Self> {
-		&*(inner as *const &T).cast::<Pin<Self>>()
+		&*ptr::from_ref::<&T>(inner).cast::<Pin<Self>>()
 	}
 
 	/// Unwraps the payload pointer contained in the current instance.
@@ -378,7 +378,7 @@ impl<T: ?Sized + IntrusivelyCountable> Arc<T> {
 	/// Checks whether two instances of [`Arc<T>`] point to the same instance.
 	#[must_use]
 	pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-		this.pointer == other.pointer
+		ptr::addr_eq(this.pointer.as_ptr(), other.pointer.as_ptr())
 	}
 
 	/// Ensures the payload is exclusively pointed to by this [`Arc<T>`], cloning it if necessary,
@@ -392,7 +392,7 @@ impl<T: ?Sized + IntrusivelyCountable> Arc<T> {
 				// Safety:
 				// No effective encapsulation change happens.
 				// `Self::pin` does call `IntrusivelyCountable::ref_counter`, but this is legal as that method is not allowed to have effects.
-				(&**this).managed_clone().pipe(Self::pin)
+				(**this).managed_clone().pipe(Self::pin)
 			};
 
 			// This could be done faster, but whether that's significant is up to benchmarking it.
@@ -401,7 +401,7 @@ impl<T: ?Sized + IntrusivelyCountable> Arc<T> {
 
 		ExclusivePin::new(exclusivity, unsafe {
 			Pin::new_unchecked(
-				(*(this as *mut Pin<Self>).cast::<Arc<T>>())
+				(*ptr::from_mut::<Pin<Self>>(this).cast::<Arc<T>>())
 					.pointer
 					.as_mut(),
 			)
@@ -415,7 +415,7 @@ impl<T: ?Sized + IntrusivelyCountable> Arc<T> {
 		unsafe { this.ref_counter().acquire() }.map(|exclusivity| {
 			ExclusivePin::new(exclusivity, unsafe {
 				Pin::new_unchecked(
-					(*(this as *mut Pin<Self>).cast::<Arc<T>>())
+					(*ptr::from_mut::<Pin<Self>>(this).cast::<Arc<T>>())
 						.pointer
 						.as_mut(),
 				)
