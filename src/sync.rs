@@ -332,7 +332,7 @@ impl<T: ?Sized + IntrusivelyCountable> Arc<T> {
 	///
 	/// # Safety
 	///
-	/// `inner` must be a reference to a reference to an instance managed by [`Arc`].
+	/// `inner` must be a reference to a reference to an instance managed by [`Arc`] and wrap its entire contents in an [`UnsafeCell`](`core::cell::UnsafeCell`).
 	#[must_use]
 	pub unsafe fn borrow_from_inner_ref<'a>(inner: &'a &'a T) -> &'a Self {
 		&*ptr::from_ref::<&T>(inner).cast::<Self>()
@@ -344,7 +344,7 @@ impl<T: ?Sized + IntrusivelyCountable> Arc<T> {
 	///
 	/// # Safety
 	///
-	/// `inner` must be a reference to a reference to an instance managed by [`Pin<Arc>`].
+	/// `inner` must be a reference to a reference to an instance managed by [`Pin<Arc>`] and wrap its entire contents in an [`UnsafeCell`](`core::cell::UnsafeCell`).
 	#[must_use]
 	pub unsafe fn borrow_pin_from_inner_ref<'a>(inner: &'a &'a T) -> &'a Pin<Self> {
 		&*ptr::from_ref::<&T>(inner).cast::<Pin<Self>>()

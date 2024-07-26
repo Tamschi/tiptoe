@@ -1,9 +1,16 @@
 #![cfg(feature = "sync")]
 
+use std::cell::UnsafeCell;
+
 use tiptoe::{Arc, IntrusivelyCountable, TipToe};
 
 #[derive(Default)]
 struct Intruded {
+	intruded: UnsafeCell<Intruded_>,
+}
+
+#[derive(Default)]
+struct Intruded_ {
 	_nontrivial: Box<usize>,
 	counter: TipToe,
 }
@@ -12,7 +19,7 @@ unsafe impl IntrusivelyCountable for Intruded {
 	type RefCounter = TipToe;
 
 	fn ref_counter(&self) -> &Self::RefCounter {
-		&self.counter
+		&unsafe { &*self.intruded.get() }.counter
 	}
 }
 
